@@ -262,7 +262,12 @@ function prettyConcat(array, accessFun) {
   return array.reduce(function (prev, cur, index) { return prev += (index == 0 ? "" : (index != array.length - 1 ? ", " : " und ")) + accessFun(cur); }, "");
 }
 
+function shortenUrl(url) {
+  return UrlShortener.Url.insert({ longUrl: url }).id;
+}
+
 function mailBills(calculationSheet, billingSheet, transactions) {
+  var billingTableShortUrl = shortenUrl(Utilities.formatString("%s#gid=%d", SpreadsheetApp.getActiveSpreadsheet().getUrl(), billingSheet.getSheetId()));
   var emails = getMailAddresses();
   var accountDetails = getBankTransferDetails();
   for (var i = 0; i < emails.length; i++) {
@@ -307,7 +312,7 @@ function mailBills(calculationSheet, billingSheet, transactions) {
       report += ".\n\n";
     }
     
-    report += Utilities.formatString("Unter %s#gid=%d kannst du die gesamte Abrechnungstabelle inkl. der Zahlungsposten sehen.", SpreadsheetApp.getActiveSpreadsheet().getUrl(), billingSheet.getSheetId());
+    report += Utilities.formatString("Unter %s kannst du die gesamte Abrechnungstabelle inkl. der Zahlungsposten sehen.", billingTableShortUrl);
     MailApp.sendEmail(myemail, emailOptions.name + " abgerechnet", report);
     //MailApp.sendEmail(adminEmail, emailOptions.name + " abgerechnet", report);
   }
