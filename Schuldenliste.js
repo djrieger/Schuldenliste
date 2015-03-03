@@ -6,6 +6,36 @@ var emailOptions = { name: "Name der Schuldenliste", replyTo: "Absenderadresse f
 var adminEmail = "E-Mail-Adresse für Benachrichtigungen über jeden neuen Eintrag und Abrechnungen";
 // -------------
 
+// UI strings:
+
+var msg = {
+  and: " und ",
+  fullStop: ".",
+
+  adminNotificationSubject: "@Admin: %s in Schuldenliste eingetragen",
+  adminNotificationBody: "Es gibt einen neuen Eintrag in der Schuldenliste.\n\n%s hat für %s %.2f € ausgegeben und %d Person(en) als Gäste angegeben.\n\nBackup:\n%s",
+
+  newItemSubject: "%s in Schuldenliste eingetragen",
+  creditorEmailBody: "Hallo %s,\n\nDein Eintrag für %s wurde in die Schuldenliste eingetragen. %s Zur Kontrolle: %s",
+  newBalance: "Dein neuer Kontostand auf der Schuldenliste beträgt %.2f €.",
+
+  debitorEmailBody: "Hallo %s,\n\n%s hat für %s %.2f € ausgegeben",
+  debitorEmailBody2: " und angegeben, dass du für dich und %d weitere Person(en) zahlst",
+  debitorEmailBody3: ". Dein Anteil beläuft sich auf %.2f €.\n\n",
+  debitorEmailBody4: "%s Unter %s kannst du alle Einträge in der Schuldenliste sehen. Hinweis: Die Abrechnung der Schulden erfolgt erst später. Diese E-Mail ist nur dazu da, dass du die eingetragenen Informationen überprüfen kannst. Du hast auch etwas, das du in die Schuldenliste eintragen möchtest? Dann fülle einfach schnell das Formular unter %s aus.",
+  
+  billedSubject: "%s abgerechnet",
+  billingEmailBody1: "Hallo %s,\n\nes ist Zahltag! Die Schuldenliste wurde abgerechnet. ",
+  billingEmailBody2: "Bitte zahle innerhalb einer Woche ",
+  billingEmailBody3: "an %s %.2f €",
+  billingEmailBody4: "%s möchte(n), dass du deine Schulden überweist statt in Bar zu zahlen. Hier die Überweisungsdaten:\n\n",
+  billingEmailBody5: "Kontoinhaber: %s\nIBAN: %s\nBIC: %s\nBetrag: %.2f €\nVerwendungszweck: Abrechnung Schuldenliste %s",
+  billingEmailBody6: "Du erhältst ",
+  billingEmailBody7: "von %s %.2f €",
+  billingEmailBody8: "Unter %s kannst du die gesamte Abrechnungstabelle inkl. der Zahlungsposten sehen."
+}
+
+// internal variables:
 
 var responsesSheetName = "Formularantworten";
 var calculationSheetName = "Berechnungen";
@@ -83,8 +113,8 @@ function email(sheet, calculationSheet, mailSheet, lastrow, adminonly) {
   }
   
   // E-Mail an Admin
-  var message = Utilities.formatString("Es gibt einen neuen Eintrag in der Schuldenliste.\n\n%s hat für %s %.2f € ausgegeben und %d Person(en) als Gäste angegeben.\n\nBackup:\n%s", creditor, title, amount, guestsNum, backup);
-  MailApp.sendEmail(adminEmail, "@Admin: " + title + " in Schuldenliste eingetragen", message, emailOptions);
+  var message = Utilities.formatString(msg["adminNotificationBody"], creditor, title, amount, guestsNum, backup);
+  MailApp.sendEmail(adminEmail, Utilities.formatString(msg["adminNotificationSubject"], title), message, emailOptions);
   
   var mailTable = mailSheet.getRange(2, 1, mailSheet.getLastRow() - 1, 2).getValues();
   var counts = sheet.getRange(lastrow, 6, 1, sheet.getLastColumn()).getValues()[0];  
@@ -99,20 +129,20 @@ function email(sheet, calculationSheet, mailSheet, lastrow, adminonly) {
     }
     
     userNewBalance = balances[nameHeaders.indexOf(user)];
-    var newBalanceMessage = Utilities.formatString("Dein neuer Kontostand auf der Schuldenliste beträgt %.2f €.", userNewBalance);
+    var newBalanceMessage = Utilities.formatString(msg["newBalance"], userNewBalance);
     
     if (user.toLowerCase() == creditor.toLowerCase()) {
-      message = Utilities.formatString("Hallo %s,\n\nDein Eintrag für %s wurde in die Schuldenliste eingetragen. %s Zur Kontrolle: %s", user, title, newBalanceMessage, resultsUrl);
-      MailApp.sendEmail(email, title + " in Schuldenliste eingetragen", message, emailOptions)
+      message = Utilities.formatString(msg["creditorEmailBody"], user, title, newBalanceMessage, resultsUrl);
+      MailApp.sendEmail(email, Utilities.formatString(msg["newItemSubject"], title), message, emailOptions)
       mailSheet.getRange(i + 2, 3).setValue(new Date());
     } else if (counts[i] > 0) {
-      message = Utilities.formatString("Hallo %s,\n\n%s hat für %s %.2f € ausgegeben", user, creditor, title, amount);
+      message = Utilities.formatString(msg["debitorEmailBody"], user, creditor, title, amount);
       if (counts[i] > 1) {
-        message += Utilities.formatString(" und angegeben, dass du für dich und %d weitere Person(en) zahlst", counts[i] - 1);
+        message += Utilities.formatString(msg["debitorEmailBody2"], counts[i] - 1);
       }
-      message += Utilities.formatString(". Dein Anteil beläuft sich auf %.2f €.\n\n", perPerson * counts[i]);
-      message += Utilities.formatString("%s Unter %s kannst du alle Einträge in der Schuldenliste sehen. Hinweis: Die Abrechnung der Schulden erfolgt erst später. Diese E-Mail ist nur dazu da, dass du die eingetragenen Informationen überprüfen kannst. Du hast auch etwas, das du in die Schuldenliste eintragen möchtest? Dann fülle einfach schnell das Formular unter %s aus.", newBalanceMessage, resultsUrl, formUrl);
-      MailApp.sendEmail(email, title + " in Schuldenliste eingetragen", message, emailOptions);
+      message += Utilities.formatString(msg["debitorEmailBody3"], perPerson * counts[i]);
+      message += Utilities.formatString(msg["debitorEmailBody4"], newBalanceMessage, resultsUrl, formUrl);
+      MailApp.sendEmail(email, Utilities.formatString(msg["newItemSubject"], title), message, emailOptions);
       mailSheet.getRange(i + 2, 3).setValue(new Date());
     }
   }
@@ -259,7 +289,7 @@ function getBankTransferDetails() {
 function prettyConcat(array, accessFun) {
   // Nimm Identitätsfunktion, falls keine Callbackfunktion übergeben wurde:
   accessFun = typeof accessFun !== 'undefined' ? accessFun : function (x) { return x; };
-  return array.reduce(function (prev, cur, index) { return prev += (index == 0 ? "" : (index != array.length - 1 ? ", " : " und ")) + accessFun(cur); }, "");
+  return array.reduce(function (prev, cur, index) { return prev += (index == 0 ? "" : (index != array.length - 1 ? ", " : msg["and"])) + accessFun(cur); }, "");
 }
 
 function shortenUrl(url) {
@@ -273,7 +303,7 @@ function mailBills(calculationSheet, billingSheet, transactions) {
   for (var i = 0; i < emails.length; i++) {
     var me = emails[i].user;
     var myemail = emails[i].email;
-    var report = Utilities.formatString("Hallo %s,\n\nes ist Zahltag! Die Schuldenliste wurde abgerechnet. ", me);
+    var report = Utilities.formatString(msg["billingEmailBody1"], me);
     // Behalte nur Schulden, die auf zwei Nachkommastellen gerundet ungleich Null sind
     transactions = transactions.filter(function (elem) { return Utilities.formatString("%.2f", elem.amount) !== "0.00"; });
     var whatIshouldPay = transactions.filter(function (elem) { return elem.from === me; });
@@ -283,7 +313,7 @@ function mailBills(calculationSheet, billingSheet, transactions) {
     
     var transfers = [];
     if (whatIshouldPay.length > 0) {
-      report += "Bitte zahle innerhalb einer Woche ";
+      report += msg["billingEmailBody2"];
       report += prettyConcat(whatIshouldPay.map(function (debt) {
         for (var j = 0; j < accountDetails.length; j++) {
           // Hat der dem ich Geld schulde Kontodaten angegeben?
@@ -291,29 +321,29 @@ function mailBills(calculationSheet, billingSheet, transactions) {
             transfers.push(accountDetails[j].concat([debt.amount]));
           }
         }
-        return Utilities.formatString("an %s %.2f €", debt.to, debt.amount)
+        return Utilities.formatString(msg["billingEmailBody3"], debt.to, debt.amount)
       }));
       report += "\n\n"
       
       if (transfers.length > 0) {
-        report += Utilities.formatString("%s möchte(n), dass du deine Schulden überweist statt in Bar zu zahlen. Hier die Überweisungsdaten:\n\n", prettyConcat(transfers, function (a) { return a[0]; }));// transfers.reduce(function (prev, cur, index) { return prev += cur[0] + (index != transfers.length - 1 ? ", " : " und "); }, ""));
+        report += Utilities.formatString(msg["billingEmailBody4"], prettyConcat(transfers, function (a) { return a[0]; }));// transfers.reduce(function (prev, cur, index) { return prev += cur[0] + (index != transfers.length - 1 ? ", " : " und "); }, ""));
         report += transfers.map(function (elem) {
-            return Utilities.formatString("Kontoinhaber: %s\nIBAN: %s\nBIC: %s\nBetrag: %.2f €\nVerwendungszweck: Abrechnung Schuldenliste %s", elem[1], elem[2], elem[3], elem[4], Utilities.formatDate(new Date(), "CET", "dd.MM.yyyy"));
+            return Utilities.formatString(msg["billingEmailBody5"], elem[1], elem[2], elem[3], elem[4], Utilities.formatDate(new Date(), "CET", "dd.MM.yyyy"));
           }).join("\n\n");
         report += "\n\n";
       }
     }
     
     if (whatIamPaid.length > 0) {
-      report += "Du erhältst ";
+      report += msg["billingEmailBody6"];
       report += prettyConcat(whatIamPaid.map(function (debt) {
-        return Utilities.formatString("von %s %.2f €", debt.from, debt.amount);
+        return Utilities.formatString(msg["billingEmailBody7"], debt.from, debt.amount);
       }));
-      report += ".\n\n";
+      report += msg["fullStop"] + "\n\n";
     }
     
-    report += Utilities.formatString("Unter %s kannst du die gesamte Abrechnungstabelle inkl. der Zahlungsposten sehen.", billingTableShortUrl);
-    MailApp.sendEmail(myemail, emailOptions.name + " abgerechnet", report);
+    report += Utilities.formatString(msg["billingEmailBody8"], billingTableShortUrl);
+    MailApp.sendEmail(myemail, Utilities.formatString(msg["billedSubject"], emailOptions.name), report);
     //MailApp.sendEmail(adminEmail, emailOptions.name + " abgerechnet", report);
   }
   MailApp.sendEmail(adminEmail, "@Admin: " + emailOptions.name + " abgerechnet", Utilities.formatString("Unter %s#gid=%d kannst du die gesamte Abrechnungstabelle inkl. der Zahlungsposten sehen.", SpreadsheetApp.getActiveSpreadsheet().getUrl(), billingSheet.getSheetId()));
